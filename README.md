@@ -114,7 +114,114 @@ cargo check --manifest-path src-tauri/Cargo.toml
 npm run tauri build
 ```
 
-Execute o build no sistema de destino: Windows para seus instaladores e Linux para seus pacotes. Há um workflow de integração contínua para testar e compilar o executável nos dois sistemas; ele não publica instaladores.
+Execute o build no sistema de destino: Windows para seus instaladores, macOS para `.app`/`.dmg` e Linux para seus pacotes. O workflow atual testa e compila no Windows e no Linux; ele não inclui macOS nem publica instaladores.
+
+### Compilar no Windows
+
+Use um terminal **PowerShell no Windows**, com Git, Node.js e npm instalados. Prepare também:
+
+- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/): selecione **Desenvolvimento para desktop com C++**, incluindo as ferramentas MSVC e o Windows SDK.
+- [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/): instale caso ainda não esteja disponível.
+- [Rust via rustup](https://rustup.rs/): use a toolchain estável **MSVC**, não GNU. Reabra o terminal depois da instalação.
+
+Confira as ferramentas e obtenha o código:
+
+```powershell
+node --version
+npm --version
+rustc --version
+cargo --version
+rustup show active-toolchain
+
+git clone https://github.com/TheBoyMurky/ptcg-overlay.git
+cd ptcg-overlay
+npm ci
+```
+
+Se você já clonou o projeto, entre na pasta existente em vez de clonar novamente. Para um Windows x64, a toolchain exibida deve terminar em `x86_64-pc-windows-msvc`.
+
+Para executar em desenvolvimento:
+
+```powershell
+npm run tauri dev
+```
+
+Encerre o modo de desenvolvimento antes de gerar o instalador de produção:
+
+```powershell
+npm run tauri build -- --bundles nsis
+```
+
+O instalador `.exe` ficará em `src-tauri/target/release/bundle/nsis/`. Para gerar um `.msi`, use:
+
+```powershell
+npm run tauri build -- --bundles msi
+```
+
+O `.msi` ficará em `src-tauri/target/release/bundle/msi/`. A geração de MSI requer o recurso opcional **VBScript** do Windows; consulte a documentação abaixo se ocorrer erro em `light.exe`.
+
+Para compilar apenas o executável, sem instalador:
+
+```powershell
+npm run tauri build -- --no-bundle
+```
+
+Resultado: `src-tauri/target/release/ptcg-overlay.exe`. O WebView2 continua sendo necessário para executar o aplicativo. Os comandos acima não configuram assinatura digital.
+
+Referências: [pré-requisitos do Tauri no Windows](https://v2.tauri.app/start/prerequisites/#windows) e [instaladores Windows](https://v2.tauri.app/distribute/windows-installer/).
+
+### Compilar no macOS
+
+Execute os comandos **em um Mac**, com Node.js e npm instalados. Para este aplicativo desktop, instale as ferramentas de linha de comando do Xcode e aguarde a conclusão do instalador:
+
+```bash
+xcode-select --install
+```
+
+Instale Rust seguindo o [rustup](https://rustup.rs/), reabra o terminal e confira o ambiente:
+
+```bash
+source "$HOME/.cargo/env"
+node --version
+npm --version
+rustc --version
+cargo --version
+xcode-select -p
+
+git clone https://github.com/TheBoyMurky/ptcg-overlay.git
+cd ptcg-overlay
+npm ci
+```
+
+Se já tiver o repositório, use a pasta existente.
+
+**Configuração necessária para o overlay:** o projeto utiliza uma janela transparente. No macOS, o Tauri exige `app.macOSPrivateApi: true` para esse recurso. Os comandos abaixo passam essa configuração apenas nesta execução, sem editar o arquivo compartilhado com Windows e Linux. Essa opção utiliza APIs privadas e impede a distribuição pela Mac App Store. Consulte a [configuração de transparência do Tauri](https://v2.tauri.app/reference/config/#windowconfig).
+
+Para executar em desenvolvimento:
+
+```bash
+npm run tauri dev -- --config '{"app":{"macOSPrivateApi":true}}'
+```
+
+Encerre o modo de desenvolvimento e gere o aplicativo de produção:
+
+```bash
+npm run tauri build -- --bundles app --config '{"app":{"macOSPrivateApi":true}}'
+```
+
+O resultado ficará em `src-tauri/target/release/bundle/macos/PTCG Journal.app`. Para gerar também uma imagem de instalação `.dmg`:
+
+```bash
+npm run tauri build -- --bundles app,dmg --config '{"app":{"macOSPrivateApi":true}}'
+```
+
+O `.dmg` ficará em `src-tauri/target/release/bundle/dmg/`. Sem `--target`, o build usa a arquitetura da toolchain instalada: normalmente ARM64 em Apple Silicon ou x64 em Macs Intel; ele não gera automaticamente um aplicativo universal.
+
+Estes comandos são para compilação local. Assinatura Developer ID e notarização para distribuição a terceiros ainda não estão configuradas. O build e o comportamento do overlay no macOS ainda precisam ser validados em um Mac.
+
+Referências: [pré-requisitos no macOS](https://v2.tauri.app/start/prerequisites/#macos), [pacote `.app`](https://v2.tauri.app/distribute/macos-application-bundle/) e [assinatura e notarização](https://v2.tauri.app/distribute/sign/macos/).
+
+### Verificação manual após compilar
 
 Checklist manual do desktop:
 
@@ -131,6 +238,6 @@ Checklist manual do desktop:
 - A checagem TypeScript, o build da interface e a compilação dos testes com integração desktop passaram no Linux.
 - `npm run tauri build -- --debug --no-bundle` gerou o executável Linux em `src-tauri/target/debug/ptcg-overlay`, com a interface incluída, sem gerar instalador.
 - A interface ainda precisa de inspeção visual e o overlay precisa ser testado com o jogo aberto. Não havia navegador ou desktop conectado disponível para essa inspeção durante a implementação.
-- Windows e instaladores ainda não foram validados. O workflow só terá resultados após ser executado no GitHub.
+- Windows, macOS e instaladores ainda não foram validados. O workflow só terá resultados após ser executado no GitHub.
 
 Projeto independente, sem vínculo com The Pokémon Company.
