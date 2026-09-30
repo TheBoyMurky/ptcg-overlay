@@ -1,0 +1,29 @@
+# Dependências, builds e instaladores gerados localmente.
+node_modules/
+dist/
+target/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Histórico pessoal e cópias locais do SQLite.
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+
+# Configurações locais e credenciais; exemplos podem ser versionados.
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.local
+.aws
+.agents
+.codex
+src-tauri/gen/
